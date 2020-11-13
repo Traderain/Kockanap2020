@@ -2,23 +2,22 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import logging
 import json
+import game_state
 import requests
 
-def use_recieved_data(data):
-    print('Parsing game info...')
-    return data
-
-def send_response(data):
+def send_response(data, ip):
     print('Calculating response...')
     json_d = json.loads(data)
     print('-- GAME STATE --')
-    print(json.dumps(json_d, indent=2))
+    #print(json.dumps(json_d, indent=2))
+    gs = game_state.GameState(json_d)
+    for p in gs.perceptions:
+        print('\t' + p.to_string(gs.unit_ids))
     print('--- END GAME ---')
     print('Sending response')
-    url = 'https://www.w3schools.com/python/demopage.php'
-    myobj = {'somekey': 'somevalue'}
-    x = requests.post(url, data = myobj)
+    ret = gs.handle_response(ip)
     print('-- CURRENT LOOP DONE --')
+    return ret
 
 class S(BaseHTTPRequestHandler):
     def _set_response(self):
@@ -34,14 +33,9 @@ class S(BaseHTTPRequestHandler):
     def do_POST(self):
         print('[Post request recieved]')
         content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
-       # logging.info("POST request,\nPath: %s\nHeaders:\n%s\n\nBody:\n%s\n",
-        #        str(self.path), str(self.headers), post_data.decode('utf-8'))
-        #jsondata = post_data.decode('utf-8')
         post_data = self.rfile.read(content_length) # <--- Gets the data itself
-        send_response(post_data)        
-
-        self._set_response()
-        self.wfile.write("POST request for {}".format(self.path).encode('utf-8'))
+        resp_data = send_response(post_data, 'http://' + self.client_address[0])        
+        self.wfile.write(resp_data).encode('utf-8')
 
 def run(server_class=HTTPServer, handler_class=S, port=8080):
     logging.basicConfig(level=logging.INFO)
@@ -49,8 +43,10 @@ def run(server_class=HTTPServer, handler_class=S, port=8080):
     httpd = server_class(server_address, handler_class)
     logging.info('Starting httpd...\n')
     try:
+        logging.info('Httpd server is up!')
         httpd.serve_forever()
     except KeyboardInterrupt:
+        logging.error('Stopping server...')
         pass
     httpd.server_close()
     logging.info('Stopping httpd...\n')
