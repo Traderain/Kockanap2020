@@ -1,0 +1,7 @@
+C:\Users\Hajni\Documents\repos\Kockanap2020\2020\Side tasks\II.A\bin\Debug\II.A.exe.config
+C:\Users\Hajni\Documents\repos\Kockanap2020\2020\Side tasks\II.A\bin\Debug\II.A.exe
+C:\Users\Hajni\Documents\repos\Kockanap2020\2020\Side tasks\II.A\bin\Debug\II.A.pdb
+C:\Users\Hajni\Documents\repos\Kockanap2020\2020\Side tasks\II.A\obj\Debug\II.A.csprojAssemblyReference.cache
+C:\Users\Hajni\Documents\repos\Kockanap2020\2020\Side tasks\II.A\obj\Debug\II.A.csproj.CoreCompileInputs.cache
+C:\Users\Hajni\Documents\repos\Kockanap2020\2020\Side tasks\II.A\obj\Debug\II.A.exe
+C:\Users\Hajni\Documents\repos\Kockanap2020\2020\Side tasks\II.A\obj\Debug\II.A.pdb
