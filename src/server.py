@@ -13,6 +13,7 @@ from collections import defaultdict
 def send_response(data, ip):
     print('Calculating response...')
     json_d = json.loads(data)
+    preview_map(json_d)
     print('-- GAME STATE --')
     #print(json.dumps(json_d, indent=2))
     gs = game_state.GameState(json_d)
@@ -40,7 +41,7 @@ class S(BaseHTTPRequestHandler):
         content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
         post_data = self.rfile.read(content_length) # <--- Gets the data itself
         resp_data = send_response(post_data, 'http://' + self.client_address[0])        
-        self.wfile.write(resp_data).encode('utf-8')
+        self.wfile.write(resp_data)
 
 def run(server_class=HTTPServer, handler_class=S, port=8080):
     logging.basicConfig(level=logging.INFO)
@@ -56,12 +57,8 @@ def run(server_class=HTTPServer, handler_class=S, port=8080):
     httpd.server_close()
     logging.info('Stopping httpd...\n')
 
-def preview_map(fpath):
-    print('Loading json...')
-    data = ''
-    with open(fpath, 'r') as f:
-        data = f.read()
-    gamestate = game_state.GameState(json.loads(data))
+def preview_map(json_data):    
+    gamestate = game_state.GameState(json_data)
     mat = np.zeros((700, 1000, 3), dtype = "uint8")
     for p in gamestate.perceptions:
         color = (0, 0, 0)
@@ -74,21 +71,26 @@ def preview_map(fpath):
         mat[p.pos_y, p.pos_x, :] = color
     for unit in gamestate.get_units():
         cv2.drawMarker(mat, (unit.pos_x, unit.pos_y), (0, 255, 0), markerType=cv2.MARKER_CROSS)
-    for unit in gamestate.get_units():
+    for unit in gamestate.get_enemies():
         cv2.drawMarker(mat, (unit.pos_x, unit.pos_y), (255, 0, 0), markerType=cv2.MARKER_CROSS)
     cv2.imshow('[OE Kockanap] - Perception preview', mat)
-    cv2.waitKey(-1)
+    cv2.waitKey(1)
 
 
 
-MODE = 2 # 1 for server 2 for parsing json data
+MODE = 1 # 1 for server 2 for parsing json data
 
 def main():
     if MODE == 1:
         print('---- STARTING Félévmentésch HTTP Server for kockanap ----')
-        run(port=6969)
+        run(port=6970)
     elif MODE == 2:
-        preview_map('.\\data\\example_json.json')
+        print('Loading json...')
+        data = ''
+        with open('.\\data\\example_json.json', 'r') as f:
+            data = f.read()
+        d = json.loads(data)
+        preview_map(d)
     else:
         print('Unknown play mode! Error!')
 

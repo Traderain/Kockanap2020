@@ -1,10 +1,14 @@
 import json
 import requests
+import random as rand
 
 class GameState:
     team_id = -1
     perceptions = []
     unit_ids = []
+    simple_movements = ["MoveN", "MoveS", "MoveE", "MoveW"]
+    advanced_movements = ["MoveNW", "MoveNE", "MoveSW", "MoveSE"]
+    all_movement_points = 50
 
     def __init__(self, jsondata):
         self.team_id = jsondata['you_are']
@@ -25,14 +29,25 @@ class GameState:
     def get_enemies(self):
         ret = []
         for p in self.perceptions:
-            if p.item_id not in self.unit_ids:
+            if p.item_id not in self.unit_ids and p.item_id > 10 and p.item_id < 200:
                 ret.append(p)
         return ret
 
     def handle_response(self, url):
         res = Response(target=url)
         # TODO: Figure out what to send!
-        return res.get_response_data()
+        units = self.get_units()
+        move_actions = [res.simple_move, res.advanced_move]
+        actions = [res.lie_down, res.crouch, res.stand_up, res.shoot]
+        #while self.all_movement_points >= 2:
+        for unit in units:
+            idx = rand.randint(0, len(self.simple_movements) - 1)
+            self.all_movement_points -= res.simple_move(unit.item_id, self.simple_movements[idx], self.all_movement_points)
+            #idx = rand.randint(0, len(self.advanced_movements) - 1)
+            #self.all_movement_points -= res.advanced_move(unit.item_id, self.advanced_movements[idx], self.all_movement_points)
+            #for action in actions:
+            #    self.all_movement_points -= action(unit.item_id, self.all_movement_points)
+        return str(res.get_response_data()).encode('utf-8')
 
 
 class Item:
@@ -56,12 +71,12 @@ class Item:
             if self.item_id in unit_ids:
                 return('[FRIENDLY UNIT] @ X: ' + str(self.pos_x) + ' Y: ' + str(self.pos_y))
             else:
-                return('[ENEMEY UNIT] @ X: ' + str(self.pos_x) + ' Y: ' + str(elf.pos_y))
+                return('[ENEMEY UNIT] @ X: ' + str(self.pos_x) + ' Y: ' + str(self.pos_y))
         else:
             return('[ERROR]  Something is wrong id:' + str(self.item_id))
 
 class Response:
-    url = 'https://www.youtube.com/watch?v=4yVHD2qvEEk'
+    url = ''
 
     commands = []
 
@@ -73,6 +88,36 @@ class Response:
 
     def get_response_data(self):
         return json.dumps(self.commands)
+    
+    def calculate_cost(self, id, moveStr, all_movement_points, cost):
+        if all_movement_points - cost >= 0:
+            self.commands.append({"UnitId": id, "Action": moveStr})
+            return cost
+        return 0
+
+    def simple_move(self, id, moveStr, all_movement_points):
+        cost = 2
+        return self.calculate_cost(id, moveStr, all_movement_points, cost)
+    
+    def advanced_move(self, id, moveStr, all_movement_points):
+        cost = 3
+        return self.calculate_cost(id, moveStr, all_movement_points, cost)
+    
+    def lie_down(self, id, all_movement_points):
+        cost = 8
+        return self.calculate_cost(id, "LieDown", all_movement_points, cost)
+    
+    def crouch(self, id, all_movement_points):
+        cost = 4
+        return self.calculate_cost(id, "Crouch", all_movement_points, cost)
+
+    def stand_up(self, id, all_movement_points):
+        cost = 4
+        return self.calculate_cost(id, "StandUp", all_movement_points, cost)
+    
+    def shoot(self, id, all_movement_points):
+        cost = 2
+        return self.calculate_cost(id, "Shoot", all_movement_points, cost)
         
         
         
