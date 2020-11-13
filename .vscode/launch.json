@@ -10,6 +10,13 @@
             "request": "launch",
             "program": "${workspaceFolder}/src/server.py",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Start Q-Learning session",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/gym_train_run.py",
+            "console": "integratedTerminal"
         }
     ]
 }
