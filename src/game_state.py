@@ -7,7 +7,7 @@ class GameState:
     unit_ids = []
 
     def __init__(self, jsondata):
-        self.team_id = int(jsondata['you_are'])
+        self.team_id = jsondata['you_are']
         self.unit_ids = jsondata['your_units']
         for perception in jsondata['you_see']:
             pos_x = perception['X']
@@ -19,6 +19,13 @@ class GameState:
         ret = []
         for p in self.perceptions:
             if p.item_id in self.unit_ids:
+                ret.append(p)
+        return ret
+
+    def get_enemies(self):
+        ret = []
+        for p in self.perceptions:
+            if p.item_id not in self.unit_ids:
                 ret.append(p)
         return ret
 
@@ -43,7 +50,7 @@ class Item:
             return('[WALL] @ X: ' + str(self.pos_x) + ' Y: ' + str(self.pos_y))
         elif self.item_id == 2:
             return('[BONUS +5 AMMO] @ X: ' + str(self.pos_x) + ' Y: ' + str(self.pos_y))
-        elif self.item_id == 2:
+        elif self.item_id == 3:
             return('[BONUS +10 HEALTH] @ X: ' + str(self.pos_x) + ' Y: ' + str(self.pos_y))
         elif self.item_id > 10 and self.item_id < 200:
             if self.item_id in unit_ids:
