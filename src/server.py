@@ -28,7 +28,7 @@ def send_response(data, ip):
 class S(BaseHTTPRequestHandler):
     def _set_response(self):
         self.send_response(200)
-        self.send_header('Content-type', 'text/html')
+        self.send_header('Content-type', 'application/json')
         self.end_headers()
 
     def do_GET(self):
@@ -38,24 +38,13 @@ class S(BaseHTTPRequestHandler):
 
     def do_POST(self):
         print('[Post request recieved]')
-        #content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
-        #post_data = self.rfile.read(content_length) # <--- Gets the data itself
-        self.rfile.readline()
-        post_data = ''
-        while True:
-            data = self.rfile.readline()
-            if data.decode() == '\r\n' or data.decode() == '0\r\n':
-                continue
-            if len(data.decode()) > 20:
-                post_data += data.decode()
-            try:
-                json.loads(post_data.replace('\r\n', ''))
-                break
-            except:
-                continue
-        post_data = post_data.replace('\r\n', '')
-        resp_data = send_response(post_data, 'http://' + self.client_address[0])        
-        self.wfile.write(resp_data.encode('utf-8'))
+        length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(length)
+        resp_data = send_response(post_data, 'http://' + self.client_address[0]).encode('utf-8')     
+        self.send_response(200) #create header
+        self.send_header("Content-Length", str(len(resp_data)))
+        self.end_headers()
+        self.wfile.write(resp_data)
 
 def run(server_class=HTTPServer, handler_class=S, port=8080):
     logging.basicConfig(level=logging.INFO)
@@ -97,7 +86,7 @@ MODE = 1 # 1 for server 2 for parsing json data
 def main():
     if MODE == 1:
         print('---- STARTING Félévmentésch HTTP Server for kockanap ----')
-        run(port=6971)
+        run(port=6969)
     elif MODE == 2:
         print('Loading json...')
         data = ''
