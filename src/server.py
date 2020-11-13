@@ -13,6 +13,7 @@ from collections import defaultdict
 def send_response(data, ip):
     print('Calculating response...')
     json_d = json.loads(data)
+    preview_map(json_d)
     print('-- GAME STATE --')
     #print(json.dumps(json_d, indent=2))
     gs = game_state.GameState(json_d)
@@ -56,12 +57,8 @@ def run(server_class=HTTPServer, handler_class=S, port=8080):
     httpd.server_close()
     logging.info('Stopping httpd...\n')
 
-def preview_map(fpath):
-    print('Loading json...')
-    data = ''
-    with open(fpath, 'r') as f:
-        data = f.read()
-    gamestate = game_state.GameState(json.loads(data))
+def preview_map(json_data):    
+    gamestate = game_state.GameState(json_data)
     mat = np.zeros((700, 1000, 3), dtype = "uint8")
     for p in gamestate.perceptions:
         color = (0, 0, 0)
@@ -81,14 +78,19 @@ def preview_map(fpath):
 
 
 
-MODE = 2 # 1 for server 2 for parsing json data
+MODE = 1 # 1 for server 2 for parsing json data
 
 def main():
     if MODE == 1:
         print('---- STARTING Félévmentésch HTTP Server for kockanap ----')
         run(port=6969)
     elif MODE == 2:
-        preview_map('.\\data\\example_json.json')
+        print('Loading json...')
+        data = ''
+        with open('.\\data\\example_json.json', 'r') as f:
+            data = f.read()
+        d = json.loads(data)
+        preview_map(d)
     else:
         print('Unknown play mode! Error!')
 
