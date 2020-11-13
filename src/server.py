@@ -18,7 +18,9 @@ def send_response(data, ip):
     #print(json.dumps(json_d, indent=2))
     gs = game_state.GameState(json_d)
     for p in gs.perceptions:
-        print('\t' + p.to_string(gs.unit_ids))
+        #print('\t' + p.to_string(gs.unit_ids))
+        if p.item_id == 1:
+            game_state.GameState.wall[p.pos_y][p.pos_x] = 1
     print('--- END GAME ---')
     print('Sending response')
     ret = gs.handle_response(ip)
@@ -63,6 +65,7 @@ def run(server_class=HTTPServer, handler_class=S, port=8080):
 def preview_map(json_data):    
     gamestate = game_state.GameState(json_data)
     mat = np.zeros((700, 1000, 3), dtype = "uint8")
+    cv2.bitwise_not(mat, mat, mask=game_state.GameState.wall)
     for p in gamestate.perceptions:
         color = (0, 0, 0)
         if p.item_id == 1: # This is a wall
@@ -74,8 +77,14 @@ def preview_map(json_data):
         mat[p.pos_y, p.pos_x, :] = color
     for unit in gamestate.get_units():
         cv2.drawMarker(mat, (unit.pos_x, unit.pos_y), (0, 255, 0), markerType=cv2.MARKER_CROSS)
+        cv2.putText(mat, str(unit.hp), (unit.pos_x, unit.pos_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+        cv2.putText(mat, str(unit.ammo), (unit.pos_x, unit.pos_y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
     for unit in gamestate.get_enemies():
         cv2.drawMarker(mat, (unit.pos_x, unit.pos_y), (255, 0, 0), markerType=cv2.MARKER_CROSS)
+    for unit in gamestate.get_ammos():
+        cv2.drawMarker(mat, (unit.pos_x, unit.pos_y), (255, 255, 0), markerType=cv2.MARKER_DIAMOND)
+    for unit in gamestate.get_healths():
+        cv2.drawMarker(mat, (unit.pos_x, unit.pos_y), (255, 0, 255), markerType=cv2.MARKER_DIAMOND)
     cv2.imshow('[OE Kockanap] - Perception preview', mat)
     cv2.waitKey(1)
 
@@ -86,7 +95,7 @@ MODE = 1 # 1 for server 2 for parsing json data
 def main():
     if MODE == 1:
         print('---- STARTING Félévmentésch HTTP Server for kockanap ----')
-        run(port=6969)
+        run(port=6971)
     elif MODE == 2:
         print('Loading json...')
         data = ''
