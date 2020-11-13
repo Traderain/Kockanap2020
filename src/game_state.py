@@ -11,6 +11,7 @@ class GameState:
     all_movement_points = 50
 
     def __init__(self, jsondata):
+        self.perceptions = []
         self.team_id = jsondata['you_are']
         self.unit_ids = jsondata['your_units']
         for perception in jsondata['you_see']:
@@ -22,7 +23,7 @@ class GameState:
     def get_units(self):
         ret = []
         for p in self.perceptions:
-            if p.item_id in self.unit_ids:
+            if p.item_id in self.unit_ids and not any([r.item_id == p.item_id for r in ret]):
                 ret.append(p)
         return ret
 
@@ -47,7 +48,7 @@ class GameState:
             #self.all_movement_points -= res.advanced_move(unit.item_id, self.advanced_movements[idx], self.all_movement_points)
             #for action in actions:
             #    self.all_movement_points -= action(unit.item_id, self.all_movement_points)
-        return str(res.get_response_data()).encode('utf-8')
+        return res.get_response_data()
 
 
 class Item:
@@ -81,6 +82,7 @@ class Response:
     commands = []
 
     def __init__(self, target):
+        self.commands = []
         self.url = target
 
     def append_command(self, obj):
@@ -91,7 +93,7 @@ class Response:
     
     def calculate_cost(self, id, moveStr, all_movement_points, cost):
         if all_movement_points - cost >= 0:
-            self.commands.append({"UnitId": id, "Action": moveStr})
+            self.commands.append({"UnitId": int(id), "Action": moveStr})
             return cost
         return 0
 
