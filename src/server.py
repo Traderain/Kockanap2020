@@ -9,6 +9,9 @@ import cv2
 import random
 import math
 from collections import defaultdict
+from datetime import datetime
+import time
+import re
 
 def send_response(data, ip):
     print('Calculating response...')
@@ -38,15 +41,40 @@ class S(BaseHTTPRequestHandler):
         self._set_response()
         self.wfile.write("GET request for {}".format(self.path).encode('utf-8'))
 
+    lastworking = time.time()
     def do_POST(self):
         print('[Post request recieved]')
-        length = int(self.headers['Content-Length'])
-        post_data = self.rfile.read(length)
-        resp_data = send_response(post_data, 'http://' + self.client_address[0]).encode('utf-8')     
-        self.send_response(200) #create header
-        self.send_header("Content-Length", str(len(resp_data)))
-        self.end_headers()
-        self.wfile.write(resp_data)
+        if self.headers['Content-Length'] is None:
+            diff = time.time() - self.lastworking
+            print('A szerver szar ' + time.strftime("%H:%M:%S", time.gmtime(diff)) + ' :) :) :)') 
+            leng = self.get_chunk_size()
+            post_data = self.get_chunk_data(leng).decode('utf-8').strip()
+            resp_data = send_response(post_data, 'http://' + self.client_address[0]).encode('utf-8')     
+            self.send_response(200) #create header
+            self.send_header("Content-Length", str(len(resp_data)))
+            self.end_headers()
+            self.wfile.write(resp_data)
+        else:
+            lastworking = time.time()
+            length = int(self.headers['Content-Length'])
+
+            post_data = self.rfile.read(length)
+            resp_data = send_response(post_data, 'http://' + self.client_address[0]).encode('utf-8')     
+            self.send_response(200) #create header
+            self.send_header("Content-Length", str(len(resp_data)))
+            self.end_headers()
+            self.wfile.write(resp_data)
+        
+    def get_chunk_size(self):
+        size_str = self.rfile.read(2)
+        while size_str[-2:] != b"\r\n":
+            size_str += self.rfile.read(1)
+        return int(size_str[:-2], 16)
+
+    def get_chunk_data(self, chunk_size):
+        data = self.rfile.read(chunk_size)
+        self.rfile.read(2)
+        return data
 
 def run(server_class=HTTPServer, handler_class=S, port=8080):
     logging.basicConfig(level=logging.INFO)
@@ -64,8 +92,10 @@ def run(server_class=HTTPServer, handler_class=S, port=8080):
 
 def preview_map(json_data):    
     gamestate = game_state.GameState(json_data)
-    mat = np.zeros((700, 1000, 3), dtype = "uint8")
+    mat = np.zeros((game_state.GameState.width, game_state.GameState.height, 3), dtype = "uint8")
     cv2.bitwise_not(mat, mat, mask=game_state.GameState.wall)
+    red_mat = np.full((game_state.GameState.width, game_state.GameState.height, 3), (0, 0, 255), dtype = "uint8")
+    cv2.bitwise_or(red_mat, mat, mat, mask=game_state.GameState.movement)
     for p in gamestate.perceptions:
         color = (0, 0, 0)
         if p.item_id == 1: # This is a wall
