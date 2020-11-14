@@ -106,6 +106,7 @@ def preview_map(json_data):
             color = (165, 42, 42)
         mat[p.pos_y, p.pos_x, :] = color
     for unit in gamestate.get_units():
+        cv2.rectangle(mat, (unit.pos_x -game_state.GameState.range_num, unit.pos_y -game_state.GameState.range_num), (unit.pos_x +game_state.GameState.range_num, unit.pos_y +game_state.GameState.range_num), (0,0,255), thickness=-1)
         cv2.drawMarker(mat, (unit.pos_x, unit.pos_y), (0, 255, 0), markerType=cv2.MARKER_CROSS)
         cv2.putText(mat, str(unit.hp), (unit.pos_x, unit.pos_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
         cv2.putText(mat, str(unit.ammo), (unit.pos_x, unit.pos_y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)

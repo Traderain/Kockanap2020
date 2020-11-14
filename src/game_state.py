@@ -16,6 +16,7 @@ class GameState:
     max_hp = 10
     width = 700
     height = 1000
+    range_num = 5
     wall = np.zeros((700, 1000, 1), dtype = "uint8")
     movement = np.zeros((700, 1000, 1), dtype = "uint8")
     movement_history = {}
@@ -70,22 +71,22 @@ class GameState:
         # TODO: Figure out what to send!
         GameState.movement = np.zeros((GameState.width, GameState.height, 1), dtype = "uint8")
         units = self.get_units()
-        if len(GameState.movement_history) == 0:
-            for unit in units:
-                GameState.movement_history[unit.item_id] = np.zeros((GameState.width, GameState.height, 1), dtype = "uint8")
+        for unit in units:
+            GameState.movement_history[unit.item_id] = np.zeros((GameState.width, GameState.height, 1), dtype = "uint8")
         while self.all_movement_points >= 2:
             total_cost = 0
             for unit in units:
-                #self.all_movement_points -= res.shoot_closest(unit, self.all_movement_points)
+                self.all_movement_points -= res.shoot_closest(unit, self.all_movement_points)
+            for unit in units:
                 cost = res.move_raytracing(unit, self.all_movement_points)
                 total_cost += cost
                 self.all_movement_points -= cost
+                if unit.ammo < GameState.max_hp - 5:
+                    self.all_movement_points -= res.pickup_health_closest(unit, self.all_movement_points)
+                if unit.ammo < GameState.max_ammo - 3:
+                    self.all_movement_points -= res.pickup_ammo_closest(unit, self.all_movement_points)
             if total_cost == 0:
                 break
-                #if unit.ammo < GameState.max_hp - 5:
-                #    self.all_movement_points -= res.pickup_health_closest(unit, self.all_movement_points)
-                #if unit.ammo < GameState.max_ammo - 3:
-                #    self.all_movement_points -= res.pickup_ammo_closest(unit, self.all_movement_points)
         return res.get_response_data()
 
 
@@ -200,30 +201,37 @@ class Response:
         return self.calculate_cost(item.item_id, moveStr, all_movement_points, cost)
     
     def find_ray(self, x, y, x_modifier, y_modifier, item):
+        orig_x = x
+        orig_y = y
+        prev_x = x
+        prev_y = y
         while x > 0 and y > 0 and x < GameState.height - 1 and y < GameState.width - 1:
             stop_moving = False
-            range_num = 3
-            lower_x_range = -range_num
-            upper_x_range = range_num
-            lower_y_range = -range_num
-            upper_y_range = range_num
+            range_num = GameState.range_num
+            lower_x_range = 0
+            upper_x_range = 0
+            lower_y_range = 0
+            upper_y_range = 0
             if x_modifier < 0:
-                upper_x_range = 0
+                lower_x_range = -GameState.range_num
             if x_modifier > 0:
-                lower_x_range = 0
+                upper_x_range = GameState.range_num
             if y_modifier < 0:
-                upper_y_range = 0
+                lower_y_range = -GameState.range_num
             if y_modifier > 0:
-                lower_y_range = 0
-            for i in range(lower_y_range, upper_y_range):
-                for j in range(lower_x_range, upper_x_range):
-                    if y + i >= 0 and x + j >= 0 and x + j < GameState.height and y + i < GameState.width and GameState.wall[y + i][x + j] == 1:
+                upper_y_range = GameState.range_num
+            for i in range(lower_y_range, upper_y_range + 1):
+                for j in range(lower_x_range, upper_x_range + 1):
+                    if y + i > 0 and x + j > 0 and x + j < GameState.height and y + i < GameState.width and (GameState.wall[y + i][x + j] == 1):
                         stop_moving = True
+                        #return (prev_x, prev_y)
                         break
                 if stop_moving:
                     break
             if stop_moving:
                 break
+            prev_x = x
+            prev_y = y
             x += x_modifier
             y += y_modifier
         return (x, y)
@@ -236,44 +244,81 @@ class Response:
         moved_e = 0
         moved_n = 0
         moved_s = 0
+        idx = rand.randint(0, 7)
         while True:
             x = curr_pos_x
             y = curr_pos_y
-            max_x, _ = self.find_ray(x, y, 1, 0, item)
-            min_x, _ = self.find_ray(x, y, -1, 0, item)
-            _, max_y = self.find_ray(x, y, 0, 1, item)
-            _, min_y = self.find_ray(x, y, 0, -1, item)
-            if min_x == max_x and min_y == max_y:
-                return 0
-            x_max_var = abs(max_x - x) if abs(max_x - x) > abs(x - min_x) else abs(x - min_x)
-            y_max_var = abs(max_y - y) if abs(max_y - y) > abs(y - min_y) else abs(y - min_y)
+            new_command = None
+            if idx == 0:
+                x, _ = self.find_ray(x, y, 1, 0, item)
+                if x == curr_pos_x and y == curr_pos_y:
+                    return total_cost
+                total_cost += 2
+                new_command = {"UnitId": int(item.item_id), "Action": "MoveE"}
+                curr_pos_x += 10
+                moved_e += 10
+            if idx == 1:
+                x, _ = self.find_ray(x, y, -1, 0, item)
+                if x == curr_pos_x and y == curr_pos_y:
+                    return total_cost
+                total_cost += 2
+                new_command = {"UnitId": int(item.item_id), "Action": "MoveW"}
+                curr_pos_x -= 10
+                moved_w += 10
+            if idx == 2:
+                _, y = self.find_ray(x, y, 0, 1, item)
+                if x == curr_pos_x and y == curr_pos_y:
+                    return total_cost
+                total_cost += 2
+                new_command = {"UnitId": int(item.item_id), "Action": "MoveS"}
+                curr_pos_y += 10
+                moved_s += 10
+            if idx == 3:
+                _, y = self.find_ray(x, y, 0, -1, item)
+                if x == curr_pos_x and y == curr_pos_y:
+                    return total_cost
+                total_cost += 2
+                new_command = {"UnitId": int(item.item_id), "Action": "MoveN"}
+                curr_pos_y -= 10
+                moved_n += 10
+            if idx == 4:
+                _, y = self.find_ray(x, y, -1, -1, item)
+                if x == curr_pos_x and y == curr_pos_y:
+                    return total_cost
+                total_cost += 3
+                new_command = {"UnitId": int(item.item_id), "Action": "MoveNW"}
+                curr_pos_x -= 10
+                curr_pos_y -= 10
+            if idx == 5:
+                _, y = self.find_ray(x, y, 1, -1, item)
+                if x == curr_pos_x and y == curr_pos_y:
+                    return total_cost
+                total_cost += 3
+                new_command = {"UnitId": int(item.item_id), "Action": "MoveNE"}
+                curr_pos_x += 10
+                curr_pos_y -= 10
+            if idx == 6:
+                _, y = self.find_ray(x, y, 1, 1, item)
+                if x == curr_pos_x and y == curr_pos_y:
+                    return total_cost
+                total_cost += 3
+                new_command = {"UnitId": int(item.item_id), "Action": "MoveSE"}
+                curr_pos_x += 10
+                curr_pos_y += 10
+            if idx == 7:
+                _, y = self.find_ray(x, y, -1, 1, item)
+                if x == curr_pos_x and y == curr_pos_y:
+                    return total_cost
+                total_cost += 3
+                new_command = {"UnitId": int(item.item_id), "Action": "MoveSW"}
+                curr_pos_x -= 10
+                curr_pos_y += 10
             if all_movement_points - total_cost - 2 < 0:
                 return total_cost
-            if x_max_var > y_max_var:
-                if abs(max_x - x) > abs(x - min_x):
-                    total_cost += 2
-                    new_command = {"UnitId": int(item.item_id), "Action": "MoveE"}
-                    curr_pos_x += 10
-                    moved_e += 10
-                else:
-                    total_cost += 2
-                    new_command = {"UnitId": int(item.item_id), "Action": "MoveW"}
-                    curr_pos_x -= 10
-                    moved_w += 10
-            else:
-                if abs(max_y - y) > abs(y - min_y):
-                    total_cost += 2
-                    new_command = {"UnitId": int(item.item_id), "Action": "MoveS"}
-                    curr_pos_y += 10
-                    moved_s += 10
-                else:
-                    total_cost += 2
-                    new_command = {"UnitId": int(item.item_id), "Action": "MoveN"}
-                    curr_pos_y -= 10
-                    moved_n += 10
-            cv2.line(GameState.movement, (x, y), (curr_pos_x, curr_pos_y), 1, 1)
-            cv2.line(GameState.movement_history[item.item_id], (x, y), (curr_pos_x, curr_pos_y), 1, 1)
-            self.commands.append(new_command)
+            if new_command is not None:
+                cv2.line(GameState.movement, (x, y), (curr_pos_x, curr_pos_y), 1, 1)
+                cv2.line(GameState.movement_history[item.item_id], (x, y), (curr_pos_x, curr_pos_y), 1, 1)
+                self.commands.append(new_command)
         return 0
     
     def lie_down(self, item, all_movement_points):
@@ -291,8 +336,9 @@ class Response:
     def shoot_closest(self, item, all_movement_points):
         enemies = self.gamestate.get_enemies()
         closest_enemy = self.get_closest(enemies, item)
-        if closest_enemy is not None:
+        if closest_enemy is not None and item.ammo > 0:
             cost = 2
+            item.ammo -= 1
             if all_movement_points - cost >= 0:
                 self.commands.append({"UnitId": int(item.item_id), "Action": "Shoot", "TargetId": closest_enemy.item_id})
                 return cost
