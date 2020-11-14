@@ -52,6 +52,14 @@ class GameState:
                 ret.append(p)
         return ret
     
+    def get_close_enemies(self, item):
+        min_distance = 60
+        ret = []
+        for p in self.perceptions:
+            if p.item_id not in self.unit_ids and p.item_id > 10 and p.item_id < 200 and not any([r.item_id == p.item_id for r in ret]) and Response.get_distance(None, p.pos_x, p.pos_y, item.pos_x, item.pos_y) > min_distance:
+                ret.append(p)
+        return ret
+    
     def get_ammos(self):
         ret = []
         for p in self.perceptions:
@@ -76,15 +84,41 @@ class GameState:
         while self.all_movement_points >= 2:
             total_cost = 0
             for unit in units:
-                self.all_movement_points -= res.shoot_closest(unit, self.all_movement_points)
+                enemies = self.get_close_enemies(unit)
+                if len(enemies) > 5 and not unit.lied_down and unit.ammo > 0:
+                    unit.crouched_down = False
+                    unit.lied_down = True
+                    cost = res.lie_down(unit, self.all_movement_points)
+                    total_cost += cost
+                    self.all_movement_points -= cost
+                elif len(enemies) > 3 and not unit.crouched_down and unit.ammo > 0:
+                    unit.crouched_down = True
+                    unit.lied_down = False
+                    cost = res.crouch(unit, self.all_movement_points)
+                    total_cost += cost
+                    self.all_movement_points -= cost
+                for enemy in enemies:
+                    cost = res.shoot_enemy(unit, enemy, self.all_movement_points)
+                    total_cost += cost
+                    self.all_movement_points -= cost
             for unit in units:
+                if unit.lied_down or unit.crouched_down:
+                    unit.crouched_down = False
+                    unit.lied_down = False
+                    cost = res.stand_up(unit, self.all_movement_points)
+                    total_cost += cost
+                    self.all_movement_points -= cost
                 cost = res.move_raytracing(unit, self.all_movement_points)
                 total_cost += cost
                 self.all_movement_points -= cost
                 if unit.ammo < GameState.max_hp - 5:
-                    self.all_movement_points -= res.pickup_health_closest(unit, self.all_movement_points)
+                    cost = res.pickup_health_closest(unit, self.all_movement_points)
+                    total_cost += cost
+                    self.all_movement_points -= cost
                 if unit.ammo < GameState.max_ammo - 3:
-                    self.all_movement_points -= res.pickup_ammo_closest(unit, self.all_movement_points)
+                    cost = res.pickup_ammo_closest(unit, self.all_movement_points)
+                    total_cost += cost
+                    self.all_movement_points -= cost
             if total_cost == 0:
                 break
         return res.get_response_data()
@@ -96,6 +130,8 @@ class Item:
     item_id = 0
     ammo = 0
     hp = 0
+    lied_down = False
+    crouched_down = False
 
     def __init__(self, x, y, id, ammo, hp):
         self.pos_x = x
@@ -103,6 +139,8 @@ class Item:
         self.item_id = id
         self.ammo = ammo
         self.hp = hp
+        self.lied_down = False
+        self.crouched_down = False
 
     def to_string(self, unit_ids):
         if self.item_id == 1:
@@ -341,6 +379,15 @@ class Response:
             item.ammo -= 1
             if all_movement_points - cost >= 0:
                 self.commands.append({"UnitId": int(item.item_id), "Action": "Shoot", "TargetId": closest_enemy.item_id})
+                return cost
+        return 0
+    
+    def shoot_enemy(self, item, enemy_item, all_movement_points):
+        if enemy_item is not None and item.ammo > 0:
+            cost = 2
+            item.ammo -= 1
+            if all_movement_points - cost >= 0:
+                self.commands.append({"UnitId": int(item.item_id), "Action": "Shoot", "TargetId": enemy_item.item_id})
                 return cost
         return 0
     
