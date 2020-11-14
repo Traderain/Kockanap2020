@@ -23,7 +23,11 @@ class GameState:
 
     def __init__(self, jsondata):
         self.all_movement_points = GameState.all_movement_points
-        self.perceptions = []
+        new_perceptions = []
+        for p in self.perceptions:
+            if p.item_id in self.unit_ids:
+                new_perceptions.append(p)
+        self.perceptions = new_perceptions
         self.team_id = jsondata['you_are']
         self.unit_ids = jsondata['your_units']
         for perception in jsondata['you_see']:
@@ -36,7 +40,16 @@ class GameState:
                 if item_id == unitdata['UnitId']:
                     ammo = unitdata['Ammo']
                     hp = unitdata['HealthPoint']
-            self.perceptions.append(Item(pos_x, pos_y, item_id, ammo, hp))
+            found_item_id = False
+            for p in self.perceptions:
+                if p.item_id == item_id and p.item_id in self.unit_ids:
+                    found_item_id = True
+                    p.pos_x = pos_x
+                    p.pos_y = pos_y
+                    p.ammo = ammo
+                    p.hp = hp
+            if not found_item_id:
+                self.perceptions.append(Item(pos_x, pos_y, item_id, ammo, hp))
     
     def get_units(self):
         ret = []
@@ -86,31 +99,24 @@ class GameState:
             for unit in units:
                 enemies = self.get_close_enemies(unit)
                 if len(enemies) > 5 and not unit.lied_down and unit.ammo > 0:
-                    unit.crouched_down = False
-                    unit.lied_down = True
                     cost = res.lie_down(unit, self.all_movement_points)
                     total_cost += cost
                     self.all_movement_points -= cost
                 elif len(enemies) > 3 and not unit.crouched_down and unit.ammo > 0:
-                    unit.crouched_down = True
-                    unit.lied_down = False
                     cost = res.crouch(unit, self.all_movement_points)
                     total_cost += cost
                     self.all_movement_points -= cost
-                for enemy in enemies:
-                    cost = res.shoot_enemy(unit, enemy, self.all_movement_points)
-                    total_cost += cost
-                    self.all_movement_points -= cost
+                cost = res.shoot_enemies(unit, enemies, self.all_movement_points)
+                total_cost += cost
+                self.all_movement_points -= cost
+                '''cost = res.shoot_closest(unit, self.all_movement_points)
+                total_cost += cost
+                self.all_movement_points -= cost'''
             for unit in units:
                 if unit.lied_down or unit.crouched_down:
-                    unit.crouched_down = False
-                    unit.lied_down = False
                     cost = res.stand_up(unit, self.all_movement_points)
                     total_cost += cost
                     self.all_movement_points -= cost
-                cost = res.move_raytracing(unit, self.all_movement_points)
-                total_cost += cost
-                self.all_movement_points -= cost
                 if unit.ammo < GameState.max_hp - 5:
                     cost = res.pickup_health_closest(unit, self.all_movement_points)
                     total_cost += cost
@@ -119,6 +125,9 @@ class GameState:
                     cost = res.pickup_ammo_closest(unit, self.all_movement_points)
                     total_cost += cost
                     self.all_movement_points -= cost
+                cost = res.move_raytracing(unit, self.all_movement_points)
+                total_cost += cost
+                self.all_movement_points -= cost
             if total_cost == 0:
                 break
         return res.get_response_data()
@@ -255,7 +264,7 @@ class Response:
             if all_movement_points - total_cost > 0 and len(new_commands) > 0:
                 self.commands.extend(new_commands)
                 return total_cost
-        return total_cost
+        return 0
 
     def simple_move(self, item, moveStr, all_movement_points):
         cost = 2
@@ -388,15 +397,27 @@ class Response:
     
     def lie_down(self, item, all_movement_points):
         cost = 8
-        return self.calculate_cost(item.item_id, "LieDown", all_movement_points, cost)
+        cost = self.calculate_cost(item.item_id, "LieDown", all_movement_points, cost)
+        if cost > 0:
+            item.crouched_down = False
+            item.lied_down = True
+        return cost
     
     def crouch(self, item, all_movement_points):
         cost = 4
-        return self.calculate_cost(item.item_id, "Crouch", all_movement_points, cost)
+        cost = self.calculate_cost(item.item_id, "Crouch", all_movement_points, cost)
+        if cost > 0:
+            item.crouched_down = True
+            item.lied_down = False
+        return cost
 
     def stand_up(self, item, all_movement_points):
         cost = 4
-        return self.calculate_cost(item.item_id, "StandUp", all_movement_points, cost)
+        cost = self.calculate_cost(item.item_id, "StandUp", all_movement_points, cost)
+        if cost > 0:
+            item.crouched_down = False
+            item.lied_down = False
+        return cost
     
     def shoot_closest(self, item, all_movement_points):
         enemies = self.gamestate.get_enemies()
@@ -417,6 +438,20 @@ class Response:
                 self.commands.append({"UnitId": int(item.item_id), "Action": "Shoot", "TargetId": enemy_item.item_id})
                 return cost
         return 0
+    
+    def shoot_enemies(self, item, enemy_items, all_movement_points):
+        total_cost = 0
+        for idx in range(len(enemy_items)):
+            closest_enemy = self.get_closest(enemy_items, item)
+            for _ in range(2):
+                if closest_enemy is not None and item.ammo > 0:
+                    total_cost += 2
+                    item.ammo -= 1
+                    if all_movement_points - total_cost >= 0:
+                        self.commands.append({"UnitId": int(item.item_id), "Action": "Shoot", "TargetId": closest_enemy.item_id})
+            if closest_enemy is not None:
+                enemy_items.remove(closest_enemy)
+        return total_cost
     
     def pickup_health_closest(self, item, all_movement_points):
         healths = self.gamestate.get_healths()
