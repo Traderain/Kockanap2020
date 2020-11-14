@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace II.A
+namespace ConsoleApp1
 {
     class Program
     {
@@ -37,14 +35,14 @@ namespace II.A
                     for (int j = 0; j < collectedNumsItem.Count; j++)
                     {
                         dynamic item = collectedNumsItem[j];
-                        if (outerResultStr != null)
+                        /*if (outerResultStr != null)
                         {
                             // Do not add same upper chars
                             if (!outerResultStr.Contains(char.ToLower(item).ToString()))
-                                outerResultStr.Add(item.ToString()); 
+                                outerResultStr.Add(item.ToString());
                         }
-                        else
-                            resultStr.Add(item.ToString());
+                        else*/
+                        resultStr.Add(item.ToString());
                     }
                 }
             }
@@ -82,7 +80,7 @@ namespace II.A
                     orderedNumbers.Add((int)item);
                 if (item is char && char.IsUpper((char)item) && !orderedUpperChars.Contains((char)item))
                     orderedUpperChars.Add((char)item);
-                if (item is char && char.IsLower((char)item) && !orderedUpperChars.Contains((char)item))
+                if (item is char && char.IsLower((char)item) && !orderedLowerChars.Contains((char)item))
                     orderedLowerChars.Add((char)item);
             }
 
