@@ -201,30 +201,57 @@ class Response:
             finished = False
             while not finished:
                 finished = True
-                if closest_item.pos_x > item.pos_x:
-                    if closest_item.pos_x - curr_pos_x > -10:
-                        total_cost += 2
-                        new_commands.append({"UnitId": int(item.item_id), "Action": "MoveE"})
-                        curr_pos_x += 10
-                        finished = False
-                else:
-                    if curr_pos_x - closest_item.pos_x > -10:
-                        total_cost += 2
-                        new_commands.append({"UnitId": int(item.item_id), "Action": "MoveW"})
+                if abs(closest_item.pos_x - item.pos_x) >= 10 and abs(closest_item.pos_y - item.pos_y) >= 10:
+                    # MoveNW
+                    if closest_item.pos_x < item.pos_x and closest_item.pos_y > item.pos_y:
+                        total_cost += 3
+                        new_commands.append({"UnitId": int(item.item_id), "Action": "MoveNW"})
                         curr_pos_x -= 10
-                        finished = False
-                if closest_item.pos_y > item.pos_y:
-                    if closest_item.pos_y - curr_pos_y > -10:
-                        total_cost += 2
-                        new_commands.append({"UnitId": int(item.item_id), "Action": "MoveS"})
                         curr_pos_y += 10
-                        finished = False
-                else:
-                    if curr_pos_y - closest_item.pos_y > -10:
-                        total_cost += 2
-                        new_commands.append({"UnitId": int(item.item_id), "Action": "MoveN"})
+                    # MoveNE
+                    if closest_item.pos_x > item.pos_x and closest_item.pos_y > item.pos_y:
+                        total_cost += 3
+                        new_commands.append({"UnitId": int(item.item_id), "Action": "MoveNE"})
+                        curr_pos_x += 10
+                        curr_pos_y += 10
+                    # MoveSW
+                    if closest_item.pos_x < item.pos_x and closest_item.pos_y < item.pos_y:
+                        total_cost += 3
+                        new_commands.append({"UnitId": int(item.item_id), "Action": "MoveSW"})
+                        curr_pos_x -= 10
                         curr_pos_y -= 10
-                        finished = False
+                    # MoveSE
+                    if closest_item.pos_x < item.pos_x and closest_item.pos_y > item.pos_y:
+                        total_cost += 3
+                        new_commands.append({"UnitId": int(item.item_id), "Action": "MoveSE"})
+                        curr_pos_x += 10
+                        curr_pos_y -= 10
+                    finished = True
+                else:
+                    if closest_item.pos_x > item.pos_x:
+                        if closest_item.pos_x - curr_pos_x > -10:
+                            total_cost += 2
+                            new_commands.append({"UnitId": int(item.item_id), "Action": "MoveE"})
+                            curr_pos_x += 10
+                            finished = False
+                    else:
+                        if curr_pos_x - closest_item.pos_x > -10:
+                            total_cost += 2
+                            new_commands.append({"UnitId": int(item.item_id), "Action": "MoveW"})
+                            curr_pos_x -= 10
+                            finished = False
+                    if closest_item.pos_y > item.pos_y:
+                        if closest_item.pos_y - curr_pos_y > -10:
+                            total_cost += 2
+                            new_commands.append({"UnitId": int(item.item_id), "Action": "MoveS"})
+                            curr_pos_y += 10
+                            finished = False
+                    else:
+                        if curr_pos_y - closest_item.pos_y > -10:
+                            total_cost += 2
+                            new_commands.append({"UnitId": int(item.item_id), "Action": "MoveN"})
+                            curr_pos_y -= 10
+                            finished = False
             if all_movement_points - total_cost > 0 and len(new_commands) > 0:
                 self.commands.extend(new_commands)
                 return total_cost

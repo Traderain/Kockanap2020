@@ -126,7 +126,7 @@ MODE = 1 # 1 for server 2 for parsing json data
 def main():
     if MODE == 1:
         print('---- STARTING Félévmentésch HTTP Server for kockanap ----')
-        run(port=6971)
+        run(port=6969)
     elif MODE == 2:
         print('Loading json...')
         data = ''
