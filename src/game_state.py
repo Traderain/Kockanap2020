@@ -201,7 +201,7 @@ class Response:
     
     def find_ray(self, x, y, x_modifier, y_modifier, item):
         while x > 0 and y > 0 and x < GameState.height - 1 and y < GameState.width - 1:
-            off = False
+            stop_moving = False
             range_num = 3
             lower_x_range = -range_num
             upper_x_range = range_num
@@ -212,17 +212,17 @@ class Response:
             if x_modifier > 0:
                 lower_x_range = 0
             if y_modifier < 0:
-                lower_y_range = 0
-            if y_modifier > 0:
                 upper_y_range = 0
+            if y_modifier > 0:
+                lower_y_range = 0
             for i in range(lower_y_range, upper_y_range):
                 for j in range(lower_x_range, upper_x_range):
-                    if y + i >= 0 and x + j >= 0 and x + j < GameState.height and y + i < GameState.width and (GameState.wall[y + i][x + j] == 1 or GameState.movement[y + i][x + j] == 1):
-                        off = True
+                    if y + i >= 0 and x + j >= 0 and x + j < GameState.height and y + i < GameState.width and GameState.wall[y + i][x + j] == 1:
+                        stop_moving = True
                         break
-                if off:
+                if stop_moving:
                     break
-            if off:
+            if stop_moving:
                 break
             x += x_modifier
             y += y_modifier
